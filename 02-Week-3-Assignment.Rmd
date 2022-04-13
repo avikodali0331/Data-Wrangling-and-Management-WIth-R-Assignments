@@ -1,0 +1,123 @@
+---
+title: "Week 3 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted should be your own, however, and not simply copied.
+
+
+## Set up
+First load some required packages and data frames. You can run the entire chunk by clicking on the green triangle below.
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(gapminder)
+library(tidylog)
+
+countries_regions <- read_csv("countries_regions.csv")
+fertility_mortality <- read_csv("fertility_mortality.csv")
+gapminder_gini_expanded <- read_csv("gapminder_gini_expanded.csv")
+```
+
+
+## Data
+
+* You will work with the `gapminder` data frame, as well as a few more. Here are quick looks at each.
+
+```{r}
+countries_regions %>% glimpse()
+fertility_mortality %>% glimpse()
+gapminder_gini_expanded %>% glimpse()
+```
+
+## Problem 1
+
+* For this problem, please create a new data frame called `problem_1` by 
+1) joining the `gapminder` data frame and the `gapminder_gini_expanded` data frame in such a way that you include all observations from both data frames while using country and year as the primary key, and then
+2) adding the region of each country by making an appropriate join with the `countries_regions` data frame.
+
+
+```{r problem 1}
+problem_1 <- gapminder %>%
+  full_join(gapminder_gini_expanded, by = c("country", "year" )) %>%
+  left_join(countries_regions)
+```
+
+* If you were successful, the output from the code chunk below should be `47091     8`.
+
+```{r problem 1 check}
+dim(problem_1)
+```
+
+
+* Please run the following chunk, which will reduce your data frame `problem_1` to a data frame that has only countries with a region (e.g., region is not `NA`) and only the years included in the original `gapminder` data frame. 
+
+```{r}
+problem1_revised <- problem_1 %>%
+  filter(!is.na(region),
+         year %in% gapminder$year)
+```
+
+
+## Problem 2
+
+* Starting with the data frame `problem1_revised`, please rename the variable `lifeExp` to `life_expectancy` and rename `gdpPercap` to `gdp_per_capita`. Hint: this should look familiar from the "DWMR W2 Data Frames and Tibbles" video.
+* Please name the resulting object `problem2`.
+
+```{r problem 2}
+problem2 <- problem1_revised %>%
+  rename("life_expectancy" = "lifeExp", "gdp_per_capita" = "gdpPercap")
+```
+
+* If you were successful, the output of the code chunk below should have "life_expectancy" and "gdp_per_capita" in it (and neither "lifeExp" nor "lifeExp").
+
+```{r problem 2 check}
+names(problem2)
+```
+
+## Problem 3.
+
+* Please join the `problem2` and the `fertility_mortality` data frames into a new data frame called `problem3`. 
+* Please use a join such that `problem3` includes *only* observations that are in `problem2`.
+
+```{r problem 3}
+problem3 <- problem2 %>% 
+  left_join(fertility_mortality)
+```
+
+* If you were successful, the output of the code chunk below should be `2160   10`.
+
+```{r problem 3 check}
+dim(problem3)
+```
+
+## Problem 4
+
+* Filter the `problem3` data frame so that only observations with `continent` equal to "Europe" are included and only with year equal to 2007.
+* Pipe the result to `ggplot()` and plot the points with `gdp_per_capita` on the x-axis and `infant_mortality` on the y-axis.
+* In the plot, color the points by the variable `region`. There are examples of something similar in the W1 first example.
+* In the code below, you'll see that I added `scale_x_log10()` so that the x-axis is shown on a log10 scale.
+
+
+```{r}
+problem3 %>%
+  filter(continent == "Europe", year == "2007") %>%
+  ggplot(aes(x = gdp_per_capita, y = infant_mortality, color = region)) +
+  geom_point() +
+  scale_x_log10()
+```
+
+
+
+## Finishing up
+
+When you are done, be sure to select "Run All" from the "Run" menu (top right of the source code pane) to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR NAME HERE and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+Finally, be sure that you have saved your file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this quiz.
+Avi Kodali

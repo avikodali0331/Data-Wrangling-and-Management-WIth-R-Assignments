@@ -1,0 +1,113 @@
+---
+title: "Week 7 Main Assignment Part 2"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions                                                                                                                         
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted should be your own, however, and not simply copied. 
+
+## Set up
+First load some required packages and data frames. You can run the entire chunk by clicking on the green triangle below.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(here)
+library(janitor)
+```
+
+
+### Problem 2
+
+* (Problem 1 is the R Markdown assignment.)
+
+* The file "spotify.xlsx" contains the Spotify top 200 tracks as of March 4, downloaded directly from the webpage. 
+* Please read the file to a tibble named `spotify_raw`.
+
+```{r Problem 2a}
+spotify_raw <- read_excel("spotify.xlsx")
+spotify_raw %>% 
+  glimpse()
+spotify_raw %>% 
+  pull(`Track/Artist`) %>% 
+  head(n = 2)
+```
+
+* Please clean the variable names so that they are legal variable names (meaning that you do not need back ticks to use them).
+
+```{r Problem 2b}
+spotify_raw <- spotify_raw %>% 
+  clean_names()
+```
+
+* The second variable has type character---that happened because the original file had commas in that column. 
+* Please create a tibble named `spotify` that is a copy of `spotify_raw` but has the second variable converted to numbers.
+* The first few entries of that variable should be 
+`4607452 3824388 3651625 3478972 3362499 3346050`.
+
+```{r Problem 2c}
+spotify <- tibble(spotify_raw) %>% 
+  mutate(number_streams = parse_number(number_streams))
+```
+
+```{r Problem 2c check}
+spotify %>%
+  pull(number_streams) %>% 
+  head(n = 6)
+```
+
+* The next part of this problem is more challenging. The values of the first variable have a "\n" after the track name, followed by a lot of spaces, followed by the artist.
+* Define a new variable `track` by either 
+    + using `str_split()`, with an appropriate argument, followed by `map_chr(1)`, or
+    + using `str_extract()` and/or `str_replace()` and an appropriate regular expression.
+* The first two values of `track` should be
+`"Heat Waves"  "STAY (with Justin Bieber)"`
+
+```{r Problem 2d}
+spotify <- spotify %>%
+  mutate(track = str_split(track_artist, "\n") %>% map_chr(1))
+```
+
+* Finally, do something similar to define a variable `artist`.
+* You may need to use `str_trim()` to get rid of any leading or following white space.
+* The first few entries of `artist` should be
+`"Glass Animals"   "The Kid LAROI"   "Imagine Dragons"`
+
+```{r Problem 2e}
+spotify <- spotify %>%
+  mutate(artist = str_split(track_artist, "\n") %>% 
+           map_chr(2) %>% 
+           str_trim() %>% 
+           str_split("by") %>% 
+           map_chr(2) %>% 
+           str_trim)
+```
+
+### A (very) small reward.
+
+* If all went well, and if the variable name for the number of streams is `number_streams`, the following code should give you a bar plot with the top 20 streams.
+
+```{r}
+spotify %>%
+  slice_max(number_streams, n = 20) %>%
+  mutate(track = fct_reorder(track, number_streams)) %>%
+  ggplot(aes(number_streams, track)) +
+  geom_col() +
+  scale_x_continuous(labels = scales::comma) +
+  labs(y = NULL) +
+  theme_bw() + 
+  ggtitle("Spotify Top 20 2022-03-04")
+```
+
+
+
+## Finishing up
+
+* When you are done, be sure to select "Run All" from the "Run" menu (top right of the source code pane) to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved you file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment
+Avi Kodali

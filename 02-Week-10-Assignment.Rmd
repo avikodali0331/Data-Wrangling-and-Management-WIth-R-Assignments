@@ -1,0 +1,228 @@
+---
+title: "Week 10 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted should be your own, however, and not simply copied. 
+
+### Set up
+First load the required packages in the code chunk below. You will need the packages tidyverse, rvest, jsonlite, and possibly ggthemes.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(rvest)
+library(jsonlite)
+library(ggthemes)
+```
+
+
+### Problem 1
+
+* The web page https://en.wikipedia.org/wiki/Jersey_Shore includes a table of towns along the shore, along with their counties, resident population, and percentage of property owned in-state. It is the *second* table on the page.
+* In the code chunk below, please scrape that table to a tibble called `shore_towns`. No need to clean it.
+
+
+
+```{r prob 1a}
+url <- "https://en.wikipedia.org/wiki/Jersey_Shore"
+robotstxt::paths_allowed(url)
+
+shore_towns <- read_html(url) %>% 
+  html_elements("table") %>% 
+  .[[2]] %>% 
+  html_table()
+```
+
+* The code chunk below should give you a result like
+```
+  Town               County   Percentage `Resident\nPopulation 2020`
+  <chr>              <chr>    <chr>      <chr>                      
+1 Allenhurst         Monmouth 67.1%      472                        
+2 Asbury Park        Monmouth 88.4%      15,188                     
+```
+
+```{r prob 1a check}
+shore_towns %>% 
+  head(n = 2)
+```
+
+
+* In the code chunk below, please reuse your code from above to create a function `prob1b()` that will scrape the second table of a Wikipedia page. (The function will work on any web page with at least two tables, not just Wikipedia pages.)
+* The only argument should be `url`, for the url of the Wikipedia page.
+* The result should be an uncleaned tibble.
+* Confirm that your function works by applying it to https://en.wikipedia.org/wiki/List_of_counties_in_New_Jersey
+
+
+```{r prob 1b}
+prob1b <- function(url) {
+  table <- read_html(url) %>% 
+  html_elements("table") %>% 
+  .[[2]] %>% 
+  html_table()
+}
+
+prob1b("https://en.wikipedia.org/wiki/List_of_counties_in_New_Jersey")
+```
+
+* The code chunk below should give a result like
+```
+# A tibble: 2 × 11
+  County          `FIPS code[9]` `County seat[10]` `Largest City[11]`  `Est.[10]` `Formed from[6…`
+  <chr>                    <int> <chr>             <chr>                    <int> <chr>           
+1 Atlantic County              1 Mays Landing      Egg Harbor Townshi…       1837 Gloucester Coun…
+2 Bergen County                3 Hackensack        Hackensack 46,030         1683 One of 4 origin…
+# … with 5 more variables: `Named for[12]` <chr>, `Density (per mi2)` <chr>, `Pop.[13]` <chr>,
+#   `Area[10]` <chr>, Map <lgl>
+```
+
+```{r prob 1b check}
+prob1b("https://en.wikipedia.org/wiki/List_of_counties_in_New_Jersey") %>% 
+  head(n = 2)
+```
+
+
+* Now please create a new function, `prob1c()`, that is just like `prob1b()` except that it has a second argument `table_number` that selects which table on the page to scrape.
+* The default value for `table_number` should be 2.
+
+```{r prob 1c}
+prob1c <- function(url, table_number = 2) {
+  table <- read_html(url) %>% 
+  html_elements("table") %>% 
+  .[[table_number]] %>% 
+  html_table()
+}
+```
+
+* In the code chunk below, the first few lines of `prob1c("https://en.wikipedia.org/wiki/List_of_counties_in_New_Jersey")` (with the argument `table_number` left unspecified) should be the same as the first few lines you saw with  `prob1b("https://en.wikipedia.org/wiki/List_of_counties_in_New_Jersey")`.
+* The second part of the code chunk below should give a result like
+```
+# A tibble: 3 × 10
+  name            length    length_2 region       endpoint_1 endpoint_2 description x     x_2   x_3  
+  <chr>           <chr>     <chr>    <chr>        <chr>      <chr>      <chr>       <lgl> <lgl> <lgl>
+1 Batona Trail    49.5      80       New Jersey … Ong's Hat  Bass Rive… "Passes th… NA    NA    NA   
+2 Highlands Trail 125.6[18] 202      New York an… Storm Kin… Delaware … ""          NA    NA    NA   
+3 Long Path       347.4     559      New York + … George Wa… Altamont,… ""          NA    NA    NA   
+
+```
+
+```{r prob 1c check}
+prob1c("https://en.wikipedia.org/wiki/List_of_counties_in_New_Jersey") %>%
+  head(n = 2)
+
+prob1c("https://en.wikipedia.org/wiki/Long-distance_trails_in_the_United_States", table_number = 1) %>% 
+  janitor::clean_names() %>%
+  filter(str_detect(region, "New Jersey"))
+```
+
+* All of these tables require some additional cleaning, but we will skip that here.
+
+### Problem 2
+
+* For this section, you will need to get an API key. 
+    + Store it in a file called `api-keys.R` but do not submit that file.
+
+* First, get a free API key at http://www.omdbapi.com/apikey.aspx and save it in `api-keys.R` as `api.key.omdb`
+* The movie "A Star is Born" was made and remade in 1937, 1954, 1976, and 2018.
+* Please use the OMDB API to find the Metascore for each of these movies.
+    - Although you can write a function if you like, it is perfectly acceptable for this assignment to write separate lines of code for each year.
+    - You will want to look at the API documentation at http://www.omdbapi.com to see how to include the year in the request.
+* You should find that the 1954 version (with Judy Garland) has the highest Metascore of the four, namely 89.
+
+
+
+```{r prob2a}
+source("api-keys.R")
+
+get_metascore_ASIB <- function(year) {
+   omdb_result <- str_c(
+    "http://www.omdbapi.com/?apikey=",
+    api.key.omdb,
+    "&t=A+Star+is+Born&y=",
+    URLencode(year)
+  )
+  
+  metascore <- omdb_result %>%
+    fromJSON() %>%
+    .[["Ratings"]] %>% 
+    filter(Source == "Metacritic") %>% 
+    mutate(year = as.integer(year))
+}
+
+
+ASIB_1937 <- get_metascore_ASIB("1937")
+
+ASIB_1954 <- get_metascore_ASIB("1954")
+
+ASIB_1976 <- get_metascore_ASIB("1976")
+
+ASIB_2018 <- get_metascore_ASIB("2018")
+
+a_star_is_born_movies_metacritic <- rbind(ASIB_1937, ASIB_1954, ASIB_1976, ASIB_2018) %>% 
+  arrange(desc(Value))
+
+a_star_is_born_movies_metacritic
+```
+
+* The Apple iTunes Search API does not require a key.
+* The documentation page is at https://affiliate.itunes.apple.com/resources/documentation/itunes-store-web-service-search-api/
+* In the next code chunk, form the url to get songs by Beyonce. 
+    - Model your url on the example "To search for all Jack Johnson audio and video content and return only the first 25 items"; however, change the limit to 200.
+* In addition, include terms in the url to set media to music and entity to song.
+    - Look at the examples to see how to add to the url. 
+* Turn the response to the url from the server into a list.
+* Name the second element of the list `songs`. 
+
+
+```{r prob 2b}
+beyonce_url <- "https://itunes.apple.com/search?term=Beyonce&limit=200&media=music&entity=song"
+
+songs <- beyonce_url %>% 
+  fromJSON() %>% 
+  .[[2]]
+```
+
+* The code chunk below should give a result like this:
+```
+  kind   n
+1 song 200
+```
+
+```{r prob 2b check}
+songs %>% 
+  count(kind)
+```
+
+
+* We will finish with a plot of the length of Beyonce's songs.
+* Song length (in milliseconds) is given by the variable `trackTimeMillis`, so please create a new variable `Track Length` equal to `trackTimeMillis` divided by 1000.
+* Use `geom_density()` to plot the density (like a smoothed histogram) of song length. You only need the single variable `Track Length` inside `aes()`.
+* Please include a title.
+* In your plot, please change the theme from the default (your choice as to which theme) and center the title.
+
+
+```{r prob 2d}
+songs %>% 
+  mutate(`Track Length` = trackTimeMillis / 1000) %>% 
+  ggplot(aes(x = `Track Length`)) +
+  geom_density() +
+  ggtitle("Density of Beyonce Song Length") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+* You should see a peak around 200 seconds with a much smaller bump around 375 seconds.
+  
+* This example illustrates something to keep in mind about data.
+* The API documentation page indicates that the maximum number of items returned is 200, but does not indicate how those 200 are chosen.
+* Thus the plot shows indicates the song length for a subset of songs, and we do not know how that subset was selected.
+
+## Finishing up
+
+* When you are done, be sure that you can knit your file to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved the final version of your file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment.
+Avi Kodali

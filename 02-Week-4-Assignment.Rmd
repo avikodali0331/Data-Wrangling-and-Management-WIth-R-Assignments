@@ -1,0 +1,141 @@
+---
+title: "Week 4 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted should be your own, however, and not simply copied.
+
+
+## Set up
+First load some required packages and data frames. You can run the entire chunk by clicking on the green triangle below.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(readxl)
+```
+
+
+### Problem 1
+
+* The Excel file `assignment-penguins.xlsx` contains three sheets, `Data`, `Lookup`, and `Prob1d`. (The data is derived from the `palmerpenguins` package but is not identical.)
+* Please read each sheet to a separate data frame.
+
+```{r problem 1a}
+penguin_data <- read_excel("assignment-penguins.xlsx", sheet = "Data")
+penguin_lookup <- read_excel("assignment-penguins.xlsx", sheet = "Lookup")
+penguin_1d <- read_excel("assignment-penguins.xlsx", sheet = "Prob1d")
+```
+
+* In the code chunk below, please use a join to get a data frame with that contains the information in all of the rows `penguin_data` plus the variable `full_species` from `penguin_lookup`.
+  + (You can check in the console window that `nrow(penguin_data)` and `nrow(penguin_data)` have the same value.)
+* Next, use the new data frame to make a single scatter plot of two variables, `bill_length_mm` and `body_mass_g`, using a different color for each value of `full_species`. Please include a title, "Penguins", on your plot.
+
+```{r problem 1b}
+penguin_full <- penguin_data %>%
+  left_join(penguin_lookup, by = "species")
+penguin_full %>% 
+  ggplot(aes(x = body_mass_g, y = bill_length_mm, color = full_species)) +
+  geom_point() +
+  ggtitle("Penguins") +
+  xlab("Body Mass (g)") +
+  ylab("Bill Length (mm)") +
+  labs(color = "Full Species")
+```
+
+* In the code chunk below, please group `penguin_full` by both `species` and `sex` (that is, at the same time) and calculate the mean value of `bill_length_mm` and `body_mass_g` for each species-sex combination. (Remember, the function for mean is `mean()`.)
+* For full credit, write your code so that the resulting variable names (i.e., the column names) are more attractive than `mean(body_mass_g)`, say.
+  + The result should be a tibble with 6 rows and 4 columns.
+
+```{r problem 1c}
+penguin_full %>%
+  group_by(species, sex) %>% 
+  summarise(bill_length_mean_mm = mean(bill_length_mm), body_mass_mean_g = mean(body_mass_g))
+```
+
+* In the last code chunk for this data, please use a filtering join on the data frames `penguin_1d` and `penguin_lookup` to find any rows in `penguin_1d` for which the variable `species` has a misspelling. (You do not need the row number, or anything like that. Your code should just print any troublesome rows to the screen.)
+
+```{r problem 1d}
+penguin_1d %>%
+  anti_join(penguin_lookup, by = 'species')
+```
+
+### Problem 2.
+
+* We are going to look at a version of the restaurant data that we looked at before, although this time the file includes inspector visits without violations. The data is found in the file `restaurants-w4.csv`.
+* We will also look at a file of "legally operating businesses" from New York City. The data is in the file `businesses-w4.csv`.
+* Please use the code chunk below to read the files into R.
+* In both cases, use the argument `guess_max = 400000` to avoid problems with `read_csv()` making a wrong guess about the data types.
+  + These are large, uncompressed files---they will take a little while to read in.
+  + You should see that `restaurants` has dimensions `362580     26` and `businesses` has dimensions `272554     27`
+
+```{r problem 2a}
+restaurants <- read_csv("restaurants-w4.csv", guess_max = 400000)
+businesses <- read_csv("businesses-w4.csv", guess_max = 400000)
+dim(restaurants)
+dim(businesses)
+``` 
+
+* The `restaurants` data frame has a variable `GRADE DATE` which `read_csv`  interprets as a character variable.
+* In the code chunk below, add a new variable `date`, derived from `GRADE DATE`, but so that `class(restaurants$date)` gives "Date" and not "character" (there's a check of that in the second code chunk below).
+* Next, filter out any inspections that do not include a grade (I've provided that code for you.)
+* Take the resulting data frame, group by date, and summarize the proportion of `GRADE` equal to "A" for each date. 
+  + This is a little challenging, but just remember that the proportion will be the sum of the grades that are equal to "A" on each date divided by the total number n of grades on that date.
+* Finally, make a scatter plot with `date` on the x-axis, the proportion of A's on the y-axis, and include a smooth---that is, include `+ geom_smooth()` in your code for the plot.
+  + If all went well, you should see a noticeable seasonal effect over the four years represented in the data, as well as a big pandemic-related gap.
+  + Don't worry if you get messages that one row was removed.
+
+
+```{r problem 2 b}
+restaurants <- restaurants %>% 
+  mutate(date = mdy(`GRADE DATE`))
+restaurants_summarized <- restaurants %>% 
+  filter(!is.na(GRADE)) %>% 
+  group_by(date) %>% 
+  summarise(proportion_of_A = sum(GRADE == "A") / n())
+restaurants_summarized %>% 
+  ggplot(aes(x = date, y = proportion_of_A)) +
+  geom_point() +
+  geom_smooth() +
+  ggtitle("Proportion of A's over Time") +
+  xlab("Date") +
+  ylab("Proportion of A's")
+```
+
+* The `businesses` data frame does not include any restaurants. However, there are a number of businesses that share a phone number with a restaurant.
+* In the code chunk below, create a data frame that has only businesses that share a phone number with a restaurant.
+  + Don't show any restaurant information---just the variables from `businesses`. You'll want to use a filtering join.
+  + Note that the phone number variables do not have the same names. It may help to take a look at the last bullet point on slide 26 of the W3 Class 1 slides.
+  + Remember you can use the `glimpse()` function or the `View()` function, or just click on the blue icon in front of the object name in the Environment pane, to see the beginning of a data frame.
+  
+```{r problem 2c}
+businesses_sharing <- businesses %>%
+  filter(!is.na(`Contact Telephone Number`)) %>%
+  semi_join(restaurants, by = c("Contact Telephone Number" = "TELEPHONE"))
+```
+
+If you've got the right code in the chunk above, the result of this chunk should be 1575
+```{r problem 2c check}
+businesses_sharing %>% 
+  nrow() 
+```
+
+* Finally, use `count()` with the `sort` argument to show the top few most common values of `Industry` for businesses sharing a phone number with a restaurant.
+
+```{r problem 2d}
+businesses_sharing %>% 
+  group_by(Industry) %>% 
+  count(sort = TRUE)
+```
+
+## Finishing up
+
+* When you are done, be sure to select "Run All" from the "Run" menu (top right of the source code pane) to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved you file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment.
+Avi Kodali

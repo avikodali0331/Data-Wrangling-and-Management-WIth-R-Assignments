@@ -1,0 +1,32 @@
+---
+title: "Week 7 Main Assignment Part 1"
+author: "Avi Kodali"
+date: '2022-03-10'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+This is the first part of the main assignment for week 7.
+
+```{r}
+life_exp_df <- read.csv("life-expectancy.csv")
+```
+
+```{r, echo = FALSE}
+life_exp_df %>% 
+  filter(Sex == 'Both') %>% 
+  ggplot(aes(x = `Year`, y = `Life.Expectancy`, color = `Race`)) +
+  geom_point() +
+  geom_line() +
+  ggtitle("Life Expectancy Over Time by Race") +
+  xlab("Year") +
+  ylab("Life Expectancy")
+```
+
+On my honor, I have neither received nor given any unauthorized assistance on this quiz
+
+Avi Kodali

@@ -1,0 +1,194 @@
+---
+title: "Week 5 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted should be your own, however, and not simply copied. 
+
+## Set up
+First load some required packages and data frames. You can run the entire chunk by clicking on the green triangle below.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(Lahman)
+```
+
+
+
+
+### Problem 1
+
+* There is an idea, called the relative age effect, that individuals born shortly after an age cutoff are more likely to play youth sports (because they are older, and therefore bigger and stronger, than the others in their age cohort). This phenomenon might continue into professional sports as well (since early success at youth sports might continue on to the professional level).
+* We can look into this with the Lahman data frames.
+* In the following code chunk, create a data frame `batting_recent` from the `Batting` data frame that is restricted to observations between between 1995 and 2019, inclusive.
+* Create a second data frame, `batting_1a`, that sums up the number of games each player batted in (that is, sums up the variable `G`) in those years and includes only players who played in at least 100 games in those years.
+* You should have 3193 rows in the result.
+
+
+```{r Problem 1a}
+batting_recent <- Batting %>%
+  filter(yearID >= 1995, yearID <= 2019)
+batting_1a <- batting_recent %>%
+  group_by(playerID) %>% 
+  summarise(sum_G = sum(G)) %>% 
+  filter(sum_G >= 100)
+```
+
+
+```{r Problem 1a check}
+nrow(batting_1a)
+```
+
+* Now make a data frame `birthdays_1b` from `People` that includes only the players in `batting_1a` who were born in the US (that is, the variable `birthCountry` has value "USA") and which has only the variables `playerID`, `birthYear`, `birthMonth`,  `birthDay`, `nameFirst`, and `nameLast`. 
+  - First use `filter()` to filter `People` to only include players born in the US;
+  - finish with a join to create `birthdays_1b`.
+* Next create a new data frame from `birthdays_1b` with two variables, `birthMonth` and a variable called `number_players` that is equal to the number of players in `birthdays_1b` with a birthday in each month.
+  - This new data frame should have 12 rows and 2 columns.
+
+
+```{r Problem 1b}
+birthdays_1b <- People %>%
+  filter(birthCountry == "USA") %>% 
+  semi_join(batting_1a) %>% 
+  select(playerID, birthYear, birthMonth, birthDay, nameFirst, nameLast)
+players_by_month <- birthdays_1b %>% 
+  group_by(birthMonth) %>% 
+  summarise(number_players = n())
+```
+
+* Please plot your data with with points and a smooth. In the code below, I've added the first line and the last two lines to make the plot look a bit nicer.
+
+```{r Problem 1c}
+upper_y_limit <- max(players_by_month$number_players)
+
+players_by_month %>%
+  ggplot(aes(x = birthMonth, y = number_players)) +
+  geom_point() +
+  geom_smooth() +
+  ggtitle("Number of Players With Birthdays In Each Month") +
+  xlab("Birth Month") +
+  ylab("Number of Players") +
+  scale_x_continuous(breaks = 1:12) + 
+  coord_cartesian(ylim = c(0, max(upper_y_limit)))
+```
+
+* Your enthusiasm about the pattern might be dampened a bit once you see this similar plots of all US births in 1978 (data from mosaicData::Births78)
+
+![](births78.png)
+
+* Interestingly, the p-value for a test comparing the data you've summarized with the 1978 US data is
+```{r}
+tibble(players = players_by_month$number_players,
+          everyone78 = mosaicData::Births78 %>% 
+         group_by(month) %>% 
+         summarize(births = sum(births)) %>% .[["births"]]) %>%
+  chisq.test()
+```
+(That is, the test of whether the players' birth months differ from the US population birth months is close to statistical significance at p = 0.02301.)
+
+
+
+* Let's conclude this section by creating a variable that has each player's birthdate.
+* Use *either* `str_c()` or `str_glue()` to create a new variable called `birthdate` with the birthdate written in the form "07-31-1978"; call the resulting data frame `birthdays_1d`.
+* Your result will have `birthdate` as a character vector, not a date. Now please create a new data frame, `birthdays_real_date` with `birthdate` not as a character but as a proper date.
+* If you succeed, the result of `birthdays_real_date %>% map_chr(class)` should look like
+```
+  playerID   birthYear  birthMonth    birthDay   birthdate 
+"character"   "integer"   "integer"   "integer"      "Date" 
+```
+
+```{r Problem 1d}
+birthdays_1d <- birthdays_1b %>%
+   mutate(birthdate = str_c(birthMonth, birthDay, birthYear, sep = "-"))
+birthdays_1d %>% head()
+
+birthdays_real_date <-   birthdays_1d %>% 
+  mutate(birthdate = mdy(birthdate)) %>% 
+  select(playerID, birthYear, birthMonth, birthDay, birthdate)
+birthdays_real_date %>% head
+```
+
+```{r Problem 1d check}
+birthdays_real_date %>% 
+  map_chr(class)
+```
+
+
+* Just for fun, the code below shows the most commonly shared date of birth.
+```{r}
+birthdays_real_date %>% 
+  count(birthdate, sort = TRUE) %>% 
+  filter(n == max(n))
+```
+
+
+### Problem 2
+
+* For this problem we will look at migration from country to country. 
+* The original data is from United Nations, Population Division, Department of Economic and Social Affairs, Workbook: UN_MigrantStockByOriginAndDestination_2019.xlsx; I've reformatted it to show only total number of migrants at mid-year by origin and destination for 2019.
+
+* The data is in the Excel file "migration.xlsx". The names of the countries of origin form the header. The numbers of the numbers of individuals who migrated by mid-year from the country of origin to the destination country.
+* Please read this into a data frame called `migration`.
+
+```{r Problem 2a}
+migration <- read_excel("migration.xlsx")
+```
+
+* This data frame is in a wide format; please create a new data frame `migration_long` that has one variable `Destination Country`, one variable `Origin Country`, and a variable `Migrants` with the number of migrants.
+* Please create a version of `migration_long` called `migration_nonzero` that has only non-zero values of Migrants.
+* The resulting data frame should have dimension `11305     3`.
+
+```{r Problem 2b}
+migration_long <- migration %>%
+  pivot_longer(cols = 2:233 , names_to = "Origin Country", values_to = "Migrants")
+migration_nonzero <- migration_long %>% 
+  filter(Migrants != 0)
+```
+
+```{r Problem 2b check}
+dim(migration_nonzero)
+```
+
+
+* Which are the top 3 destination-origin pairs?
+
+```{r Problem 2c}
+migration_nonzero %>% 
+  arrange(desc(Migrants)) %>% 
+  head(n = 3)
+```
+The top three destination-origin pairs are USA-Mexico, Turkey-Syrian Arab Republic, and UAE-India. 
+
+### Problem 3
+
+* The file "addresses.txt" contains a few mailing addresses.
+* Use `str_extract()` and a regular expression to extract *just* the 5 digit ZIP code from each address. 
+  - ZIP codes are written as either 5 digits or 5 digits followed by a hyphen followed by 4 digits; the latter is known as ZIP+4.
+
+```{r Problem 3a}
+addresses <- scan(file = "addresses.txt", sep = "\n", what = character())
+addresses %>% 
+   str_extract("[0-9]{5,5}")
+```
+
+* Please write code that will return a logical vector of length 4 that indicates which addresses have ZIP+4 versions of the ZIP code.
+  
+```{r Problem 3b}
+addresses %>% 
+  str_detect("[0-9]{5,5}[-][0-9]{4,4}$")
+```
+
+
+## Finishing up
+
+* When you are done, be sure to select "Run All" from the "Run" menu (top right of the source code pane) to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved you file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment.
+Avi Kodali

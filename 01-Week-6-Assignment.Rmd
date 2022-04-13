@@ -1,0 +1,261 @@
+---
+title: "Week 6 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+This assignment is open everything, including notes, textbook, and whatever you might find on the internet. However, **no interaction with other people is allowed.** Do not post public questions to Piazza about this assignment before March 9. General questions, like "what's the difference between `str_extract()` and `str_subset()` are okay, though.  If you have trouble or questions, please email buyske@stat.rutgers.edu or post privately on Piazza.
+
+### Set up
+* First load some required packages and data frames. You can run the entire chunk by clicking on the green triangle below.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(here)
+```
+
+
+### Problem 1
+
+* The files
+```
+income_per_person_gdppercapita_ppp_inflation_adjusted.xlsx
+maternal_mortality_ratio_per_100000_live_births.xlsx
+mean_years_in_school_women_percent_men_25_to_34_years.xlsx
+```
+are all downloaded from https://www.gapminder.org/data/. 
+
+* The file names are pretty self explanatory about the contents. Each row corresponds to one country, each column corresponds to one year, and the values are the variables given by the file names. Each Excel file has only one sheet.
+* Please read them into separate tibbles named `gap1`, `gap2`, `gap3`, respectively.
+
+```{r Problem 1a}
+gap1 <- read_excel("income_per_person_gdppercapita_ppp_inflation_adjusted.xlsx")
+gap2 <- read_excel("maternal_mortality_ratio_per_100000_live_births.xlsx")
+gap3 <- read_excel("mean_years_in_school_women_percent_men_25_to_34_years.xlsx")
+```
+
+* Each of these data frames is in wide format. 
+* Please convert each of them to a format so that each row has three columns: the name of the country, the year, and the value of the variable. 
+* The last column, with the values, should be named "income", "maternal mortality", and "educ gender ratio", depending on the data frame.
+* The names of the data frames should be `gap1_alt`, and so on.
+
+```{r Problem 1b}
+gap1_alt <- gap1 %>% 
+  pivot_longer(2:252, names_to = "year", values_to = "income")
+gap2_alt <- gap2 %>% 
+  pivot_longer(2:215, names_to = "year", values_to = "maternal mortality")
+gap3_alt <- gap3 %>% 
+  pivot_longer(2:47, names_to = "year", values_to = "educ gender ratio") 
+```
+
+
+* The code chunk below should give dimensions of `48945     3`, `40446     3`, and `8648    3`.
+```{r Problem 1b check}
+dim(gap1_alt)
+dim(gap2_alt)
+dim(gap3_alt)
+```
+
+* Now use `gap1_alt` ,`gap2_alt`, `gap3_alt` to create a new data frame called `my_gapminder`, that has variables `country`, `year`, `income`, `maternal mortality`, and `educ gender ratio`.
+* Hint: use two steps.
+
+
+```{r Problem 1c}
+my_gapminder <- gap1_alt %>% 
+  full_join(gap2_alt) %>% 
+  full_join(gap3_alt)
+```
+
+* If you've done the steps correctly, the code chunk below should similar to 
+
+```
+  country  year income `maternal mortality` `ed gender ratio`
+  <chr>   <int>  <dbl>                <dbl>             <dbl>
+1 Mexico   2012  18700                   49                99
+ ```
+with dimension `51535     5`
+
+```{r Problem 1c check}
+my_gapminder  %>% 
+  filter(year == 2012) %>%
+  slice(112)
+
+dim(my_gapminder)
+```
+ 
+ 
+
+* Notice that `year` has type character. In the code chunk below, please change the data frame so that year has type integer; you will find the function `as.integer()` or `parse_integer()` helpful.
+* Please also restrict `my_gapminder` so that only years from 1950 to 2020, inclusive, are included.
+
+
+
+```{r Problem 1d}
+my_gapminder <- my_gapminder %>% 
+  mutate(year = as.integer(year)) %>% 
+  filter(year >= 1950, year <= 2020)
+```
+
+
+* Please create a plot with income on the horizontal axis and the educational gender ratio on the vertical axis, restricting to the year 2012 and using both points and a smooth. Please include `scale_x_log10(labels = scales::comma) ` as the last line in your code so that the horizontal axis is on a log scale (and the numbers are shown with commas and not in scientific notation).
+* Don't worry about warnings starting "Removed 31 rows containing".
+* You should see a rise in the ratio as income rises until a little more than $10,000 (strictly speaking, $10,000 adjusted for inflation and purchasing power), after which the ratio levels off to a bit above 1.0.
+
+
+```{r Problem 1e}
+my_gapminder %>%
+ filter(year == 2012) %>% 
+ ggplot(aes(x = income, y = `educ gender ratio`)) +
+  geom_point() +
+  geom_smooth() +
+  ggtitle("Educational Gender Ratio vs. Income") +
+  xlab("Income") +
+  ylab("Education Gender Ratio") +
+  scale_x_log10(labels = scales::comma)
+```
+
+* Next, please plot maternal mortality by year (with year on the x axis) for just the United States and the United Kingdom.  Both countries should be on the same plot, and please use both points and lines.
+* Use color inside `aes()` to differentiate the two countries.
+* Don't worry about warnings starting "Removed xx rows containing".
+* You will notice that the lines of the plot do not connect all of the dots. That is fine for the purposes of this assignment.
+  - However, the reason it occurs is because the default is not to draw lines across missing values. If you wanted to do so anyway, you could insert `filter(!is.na(`maternal mortality`))` before the plotting steps.
+
+
+```{r Problem 1f}
+my_gapminder %>% 
+  filter(country == "United States" | country == "United Kingdom") %>% 
+  ggplot(aes(x = year, y = `maternal mortality`, color = country)) +
+  geom_point() +
+  geom_line() +
+  ggtitle("Maternal Mortality Over Time for the US and UK") +
+  xlab("Year") +
+  ylab("Maternal Mortality")
+```
+
+
+* You can find  articles about some of the reasons for the shocking trend in the US since 2000 at https://www.npr.org/2017/05/12/527806002/focus-on-infants-during-childbirth-leaves-u-s-moms-in-danger and https://www.commonwealthfund.org/publications/issue-briefs/2020/nov/maternal-mortality-maternity-care-us-compared-10-countries.
+
+
+### Problem 2
+
+* Please read the files `bird-deaths.csv` and `light_levels.csv` into two data frames in the code chunk below.
+* The first file records birds killed by flying into one particular large building during nighttime migration (most birds migrate at night). The second file indicates how lit up that building was on each night. Not every date that appears in one file appears in the other.
+
+```{r Problem 2a}
+bird_deaths <- read_csv("bird-deaths.csv")
+light_levels <- read_csv("light_levels.csv")
+
+bird_deaths %>% head()
+light_levels %>% head()
+```
+
+* If you look at the beginning of the data frame, you will see that the format of the `calendar_date` variable differs between the two data frames---for one of the files, R recognizes the variable as a date, while in the other file it does not. 
+* In the code chunk below, please change the variable `calendar_date` in `light_levels` in such a way that it has the class "date", as it does in `bird_deaths`, and name the resulting data frame `light_levels_revised`.
+* Use `light_levels_revised` to add the `light_level` column to the `bird_deaths` data frame in such a way that the resulting data frame includes only rows that match both `bird_deaths` and `light_levels_revised`. Call the resulting data frame `bird_deaths_expanded`.
+
+```{r Problem 2b}
+light_levels_revised <- light_levels %>% 
+  mutate(calendar_date = mdy(calendar_date))
+bird_deaths_expanded <- bird_deaths %>% 
+  inner_join(light_levels_revised)
+```
+
+* `bird_deaths_expanded` should have 9603 rows and 5 columns.
+```{r Problem 2b check}
+dim(bird_deaths_expanded)
+```
+
+
+* In the code chunk below, create a new data frame that contains a variable `mean_deaths` that gives the average number of bird deaths per night for each combination of the `light_level` and `flight_call`. 
+* I have provided the last line of code (notice that `length(unique(calendar_date))` gives the number of days), but you will need to provide the code that precedes that.
+
+
+```{r Problem 2c}
+bird_deaths_summarized <- bird_deaths_expanded %>%
+  group_by(light_level, flight_call) %>% 
+  summarize(mean_deaths = n()/length(unique(calendar_date)))
+```
+
+* One small change: please change `bird_deaths_summarized` so that the variable is "flight call" not "flight_call".
+
+
+```{r Problem 2d}
+bird_deaths_summarized <- bird_deaths_summarized %>%
+    rename(`flight call` = flight_call)
+```
+
+
+* Finally, please make a single plot with the light level on the horizontal axis and the mean deaths per day on the vertical axis. 
+* Use different colors depending on the value of the variable `flight call` and please use both points and a smooth in the plot.
+* (The confidence bands on the smooths are not be what one would want, since they are based on summarized data, but we won't worry about that here.)
+* Do not be concerned about any message about using method = 'loess'.
+
+```{r Problem 2f}
+bird_deaths_summarized %>% 
+  ggplot(aes(x = light_level, y = mean_deaths, color = `flight call`)) + 
+  geom_point() +
+  geom_smooth() +
+  ggtitle("Mean Deaths per Day vs Light Levels") +
+  xlab("Light Level") +
+  ylab("Mean Deaths per Day")
+```
+
+* Since the `flight call` variable indicates whether or not the species uses calls while flying, the plot indicates that such species are both more prone to fly into buildings at night and that the effect increases with the lighting level.
+
+### Problem 3.
+
+* The `bird` variable is given in the form "genus species" (that is, genus first, followed by a space, folloed by species). The code chunk below pulls that variable out as a vector.
+
+```{r Problem 3a}
+bird_vec <- bird_deaths %>%
+  pull(bird)
+
+bird_vec %>% tail()
+```
+
+* Suppose you would like to create a new vector that consists of just the genus, without the species.
+* There are at least two different ways to do so. You will demonstrate two of them.
+* First, in the code chunk below use one of the `str_*()` functions along with a regular expression to create the new vector.
+
+```{r Problem 3b}
+genus1 <- bird_vec %>%
+  str_extract("^[A-Z][a-z]+") 
+```
+
+* Second, in the code chunk below, first use `str_split()` to split the elements of the vector at the space between genus and species.
+* `bird_split` should be a list. Now use a map function to create a vector called `genus2b` containing just the genus of each bird.
+
+```{r Problem 3c}
+bird_split <- bird_vec %>%
+  str_split(" ")
+genus2b <- bird_split %>%
+  map_chr(1)
+```
+
+* Finally, create a tibble called `genus_tbl` that has only a single variable called `genus`; since the vectors `genus1` and `genus2` should be identical, you can use either vector in creating the tibble---you do not need both.
+* Using `genus_tbl` and the `count()` function, please display the five genuses with the most bird deaths from flying into the building. 
+  - Remember that `count()` has an optional argument `sort = TRUE`.
+
+```{r Problem 3d}
+genus_tb1 <- tibble(genus1)  
+genus_tb1 %>% 
+  count(genus1, sort = TRUE)
+```
+
+* Here's a picture of a member of genus Melospiza, which should be at the top value for genus.
+
+![](https://upload.wikimedia.org/wikipedia/commons/a/a4/Melospiza-melodia-001.jpg)
+
+
+## Finishing up
+
+* When you are done, be sure to choose "Restart R and Run All Chunks" to confirm that your code runs start to finish without errors. You might then like to run Preview to see an web page with your work. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved you file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment.
+Avi Kodali

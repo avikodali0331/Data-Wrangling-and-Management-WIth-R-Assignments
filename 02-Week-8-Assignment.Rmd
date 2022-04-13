@@ -1,0 +1,197 @@
+---
+title: "Week 8 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted should be your own, however, and not simply copied. 
+
+### Set up
+First load some required packages and data frames. You can run the entire chunk by clicking on the green triangle below.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(here)
+library(janitor)
+library(babynames)
+library(rvest)
+library(plotly)
+```
+
+
+### Problem 1
+
+* For this problem we will look at the frequency of the first initials of baby names.
+* Please create a code chunk, labeled Problem 1a, in which you create a new data frame called `baby_initial` that starts with the usual `babynames` data frame but 
+    - covers only the years from 2000 on,
+    - has a variable called `initial` that is just the first letter of the name (if you have trouble, look back at the first few slides of DWMR W6 Class 2 Part 1),
+    - has a variable `total` that gives, in millions, the number of times that initial is used for a name separately by each sex.
+* The first row of `baby_initial` should look like `F     A       5.596585 ` for `sex`, `initial`, and `total`.
+
+```{r Problem 1a}
+baby_initial <- babynames %>% 
+  filter(year >= 2000) %>% 
+  mutate(initial = str_extract(name,"[A-Z]")) %>% 
+  group_by(sex, initial) %>% 
+  summarise(total = sum(n) / 1000000)
+```
+
+
+
+```{r Problem 1a check}
+baby_initial %>%
+  head(n = 1)
+```
+
+* Next, please create a code chunk, labeled Problem 1b, in which you add a variable to `baby_initial` called `sound`, which is "vowel" when `initial` is A, E, I, O, or U, and "consonant" otherwise.
+* Hint: Use the `case_when()` function.
+
+```{r Problem 1b}
+baby_initial <- baby_initial %>% 
+  mutate(sound = case_when(initial %in% c("A", "E", "I", "O", "U") ~ "vowel", TRUE ~ "consonant"))
+```
+
+* Now please create a code chunk, labeled Problem 1c, in which you plot the popularity of each initial letter, using `geom_col()`.
+* Please make the fill color vary with the value of `sound`.
+* Please use `facet_wrap()` so that you get two side by side plots, one for each sex.
+
+```{r Problem 1c}
+baby_initial %>% 
+  ggplot(aes(x = initial, y = total, fill = sound)) +
+  geom_col() +
+  facet_wrap(~ sex) +
+  ggtitle("Popularity of Each Initial") +
+  xlab("Initial") +
+  ylab("Number of Babies (in millions)")
+```
+
+
+* Finally, create a code chunk, labeled Problem 1d, in which you make a plot of the first initials of baby girls only (i.e.,  not boys).
+* In this plot, however, please sort the bars so that the highest bar is on the left and the lowest bar is on the right (the slides from DWMR W6 Class 2 Part 1 have examples of doing something like this).
+* They should still be colored by whether the initial is a vowel or consonant.
+* Please include `scale_fill_brewer(type = "qual", palette = 3)` to change from the default colors (but feel free to change the values of `type` and `palette` if you prefer).
+
+```{r Problem 1d}
+baby_initial %>% 
+  filter(sex == "F") %>% 
+  mutate(initial = fct_reorder(initial, desc(total))) %>%
+  ggplot(aes(x = initial, y = total, fill = sound)) + 
+  geom_col() +
+  scale_fill_brewer(type = "qual", palette = 3) +
+  ggtitle("Popularity of Each Initial for Girls") +
+  xlab("Initial") +
+  ylab("Number of Girls (in millions)")
+```
+
+
+
+### Problem 2
+
+* This problem involves a table scraped from https://www.goodreads.com/list/show/13086.Goodreads_Top_100_Literary_Novels_of_All_Time 
+    - Despite the grandiose title, it's just based on a poll of a group of individuals on Good Reads. 
+    - Among other issues, it has some notable English-American and recency bias.
+    - I'm happy to see *Pride and Prejudice* in the top slot, however.
+* The code chunk below scrapes the table from the webpage and assigns the resulting tibble to the name `literary_raw`.
+* In the code chunk, please change the name of the variable `X1` to `rank` and drop the variables `X2` and `X4`.
+
+```{r Problem 2a}
+url <- "https://www.goodreads.com/list/show/13086.Goodreads_Top_100_Literary_Novels_of_All_Time"
+literary_raw <- url %>%
+  read_html() %>%
+  html_nodes("table") %>%
+  html_table(fill = TRUE) %>%
+  .[[1]]
+
+literary_raw <- literary_raw %>% 
+  rename(rank = X1) %>% 
+  select(rank, X3)
+```
+
+* If you look at `literary_raw`, you will see that the variable `x2` is a mess, with information separated by newline characters (backslash n: `\n`) and spaces.
+* For the following, there is more than one approach that will work. For each sub-problem, think of how you can pull out the desired information and then work with `str_*` functions and maybe `map_*` functions to do so.
+
+* The variable `X3` starts with the title of the novel.
+* Please create a code chunk, labeled Problem 2b, that creates a new data frame, `literary`, from `literary_raw` and adds a new variable `title` that is the book title. 
+    - `title` should not include any extra characters such as trailing spaces or newline characters.
+
+
+```{r Problem 2b}
+literary <- literary_raw %>% 
+  mutate(title = str_split(X3, " by") %>%  
+           map_chr(1) %>% 
+           str_trim())
+```
+
+
+* Please create a code chunk, labeled Problem 2c, to add a new variable to `literary`, namely `author`; it should not include any extra characters such as leading or trailing spaces or newline characters
+
+```{r Problem 2c}
+literary <- literary %>% 
+  mutate(author = str_split(X3, " by") %>% 
+           map_chr(2) %>% 
+           str_split("[0-4]") %>% 
+           map_chr(1) %>% 
+           str_trim() %>% 
+           str_split("  ") %>% 
+           map_chr(1) %>% 
+           str_trim())
+```
+
+
+* Please create a code chunk, labeled Problem 2d, that adds a new variable to `literary` called `rating``. For example, for Pride and Prejudice this should be 4.28. 
+* Be sure to convert the rating variable to type numeric.
+
+```{r Problem 2d}
+literary <- literary %>% 
+  mutate(rating = str_extract(X3, "[0-4][.][0-9]*")) %>% 
+  mutate(rating = as.numeric(rating))
+```
+
+
+# parse_number(X3) almost works, except it extracts the first number, so the title 1984 will be extracted and not the rating
+
+
+* Finally, please create a code chunk, labeled Problem 2e, in which you modify `literary` so that you drop the variable `X3`.
+
+
+```{r Problem 2e}
+literary <- literary %>% 
+  select(-X3)
+```
+
+
+
+
+### A final table
+
+```{r top 5}
+literary %>% 
+  slice(1:5) %>%
+  knitr::kable()
+  
+```
+
+
+### ... and an interactive plot
+
+```{r}
+literary %>%
+  ggplot(aes(rank, rating, label = author, text = title)) +
+  geom_point() +
+  theme_bw() +
+  ggtitle("Goodreads Top 100 Literary Novels of All Time")
+
+ggplotly()
+```
+
+
+## Finishing up
+
+* When you are done, be sure that you can knit your file to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved the final version of your file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment
+Avi Kodali

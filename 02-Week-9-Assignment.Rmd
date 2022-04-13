@@ -1,0 +1,251 @@
+---
+title: "Week 9 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted should be your own, however, and not simply copied. 
+
+### Set up
+As you work through the assignment, you will have to determine which packages you need to load. Put the appropriate code in the code chunk below. I've got you started.
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(rvest)
+library(janitor)
+library(ggbeeswarm)
+```
+
+
+### Problem 1
+
+* The web page https://en.wikipedia.org/wiki/List_of_colleges_and_universities_in_New_Jersey has a table of public colleges and universities and a table of private colleges and universities.
+* For this problem, you will scrape those tables and combine them.
+
+* In the code chunk below, please scrape the table of public colleges and universities into a tibble named `public`.
+
+
+
+```{r prob 1a}
+url <- "https://en.wikipedia.org/wiki/List_of_colleges_and_universities_in_New_Jersey"
+robotstxt::paths_allowed(url)
+
+public <- read_html(url) %>% 
+  html_elements("table") %>% 
+  .[[2]] %>% 
+  html_table() %>% 
+  tibble()
+```
+
+* In the code chunk below, please scrape the table of private colleges and universities into a tibble named `private`.
+
+
+```{r prob 1b}
+private <- read_html(url) %>% 
+  html_elements("table") %>% 
+  .[[3]] %>% 
+  html_table() %>% 
+  tibble()
+```
+
+* `public` should have 11 rows and 7 columns, while `private` should have 14 rows and 7 columns.
+
+```{r prob 1ab  check}
+dim(public)
+dim(private)
+```
+
+* Now please use `bind_rows()` to combine `public` and `private` into a single tibble called `colleges`.
+* In the same code chunk, please clean up the variable names to remove the "[10]".
+* Also in the same code chunk, please convert the `Enrollment` variable to numbers.
+
+```{r prob 1c}
+colleges <- bind_rows(public, private) %>% 
+  rename(Control = "Control[10]", Type = "Type[10]") %>% 
+  mutate(Enrollment = parse_number(Enrollment))
+```
+
+* The code chunk below should look like (depending on the order of the arguments to `bind_rows()`) either
+```
+Rows: 25
+Columns: 7
+$ School                            <chr> "The College of New Jersey", "Kean University", "Montclair State University", "New …
+$ Location                          <chr> "Ewing Township", "Union and Hillside", "Montclair", "Jersey City", "Newark", "Mahw…
+$ Founded                           <int> 1855, 1855, 1908, 1927, 1881, 1969, 1923, 1766, 1969, 1972, 1855, 1868, 1939, 1867,…
+$ Control                           <chr> "Public", "Public", "Public", "Public", "Public", "Public", "Public", "Public", "Pu…
+$ Type                              <chr> "Master's", "Master's", "Research university", "Master's", "Research university", "…
+$ Enrollment                        <dbl> 6964, 16000, 21115, 8550, 11652, 5200, 18484, 65000, 8111, 10934, 10250, 2156, 2284…
+$ `Accrediting or approving agency` <chr> "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "M…
+```
+or
+
+```
+Rows: 25
+Columns: 7
+$ School                            <chr> "Bloomfield College", "Caldwell University", "Centenary University", "Drew University",…
+$ Location                          <chr> "Bloomfield", "Caldwell", "Hackettstown, Long Valley, Parsippany, and Edison", "Madison…
+$ Founded                           <int> 1868, 1939, 1867, 1867, 1942, 1942, 1908, 1933, 1746, 1865, 1899, 1872, 1856, 1870
+$ Control                           <chr> "Private", "Private", "Private", "Private", "Private", "Private", "Private", "Private",…
+$ Type                              <chr> "Baccalaureate", "Master's", "Master's", "Master's", "Master's", "Master's", "Master's"…
+$ Enrollment                        <dbl> 2156, 2284, 3000, 2369, 12000, 2040, 1772, 6494, 8010, 5790, 2044, 2987, 9745, 5260
+$ `Accrediting or approving agency` <chr> "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE", "MSCHE…
+```
+
+```{r prob 1c check}
+glimpse(colleges)
+```
+
+
+* Finally, please create a violin plot, with points overlaid, of `Enrollment`, with the variable `Control` on the horizontal axis.
+* Use `geom_violin()` for the violin plot; use `geom_beeswarm()` from the `ggbeeswarm` package to keep the points from overplotting. 
+
+```{r prob 1d}
+colleges %>% 
+  ggplot(aes(x = Control, y = Enrollment)) +
+  geom_violin() +
+  geom_beeswarm()
+```
+
+### Problem 2
+
+* For this problem, you will scrape and clean a table from a research article in from the journal *Nature*.
+  - The full article is at https://www.nature.com/articles/ng.3097. At the time, it was a bit of a breakthrough article---check out the number of co-authors!
+* The url of the table is https://www.nature.com/articles/ng.3097/tables/3
+* Please create a tibble called `genes_raw` created by scraping the table.
+
+```{r prob2a}
+url2 <-  "https://www.nature.com/articles/ng.3097/tables/3"
+robotstxt::paths_allowed(url2)
+
+genes_raw <- read_html(url2) %>% 
+  html_elements("table") %>% 
+  .[[1]] %>% 
+  html_table() %>% 
+  tibble() 
+```
+
+* Next, create a new tibble called `genes` from `genes_raw`. 
+* Please convert the variable  `Lines of supporting evidence` in `genes` to type integer.
+* Next, filter the rows to exclude the rows for which the value of `Lines of supporting evidence` is `NA`.
+
+```{r prob 2b}
+genes <- genes_raw %>% 
+  mutate(`Lines of supporting evidence` = as.integer(`Lines of supporting evidence`)) %>% 
+  filter(!is.na(`Lines of supporting evidence`))
+```
+ 
+* At this point `dim(genes)` should be `20  6`:
+
+```{r prob 2b check}
+dim(genes)
+```
+
+
+
+* Now, if you look at `genes %>% select(`Top-ranking reconstituted gene sets`), you will see that the entries have newline ("\n") characters in them. 
+* Please revise the `Top-ranking reconstituted gene sets` variable so that the newlines are replaced with semicolons, and use `str_squish()` to get rid of the extra white space.
+
+
+```{r prob 2c}
+genes <- genes %>% 
+  mutate(`Top-ranking reconstituted gene sets` = str_replace(`Top-ranking reconstituted gene sets`, "\n", ";") %>%
+           str_squish())
+```
+
+* The last step is by far the trickiest. The variable `Prioritization P value` is written in scientific notation, such as `1.0 × 10−16` but that will not be properly converted by `parse_number()` or `as.numeric()`.
+  - (Scientific notation in R is written in the style of `1.0e-16`.)
+* First, use `separate()` (you might need to read the help for it to get the syntax right, `?separate`, or look at the slides from Week 5 Class 1) to add new variables to `genes` named `coefficient` and `exponent`.
+    - The times character in `Top-ranking reconstituted gene sets` is not the letter x. You should use `sep = "×"`.
+
+
+```{r prob 2d}
+genes <- genes %>% 
+  separate(`Prioritization P value`, c("coefficient", "exponent"), sep = "×")
+```
+  
+The result of the code chunk below should start like
+```
+# A tibble: 20 x 2
+   coefficient exponent
+   <chr>       <chr>   
+ 1 "1.0 "      " 10−16"
+ 2 "4.4 "      " 10−16"
+ 3 "9.9 "      " 10−9" 
+ 4 "0.016"      NA     
+ ```
+ 
+```{r prob 2d check}
+genes %>% 
+  select(coefficient, exponent)
+```
+ 
+
+* Next, convert the "−" in `exponent` to "-" (that's an en-dash originally, while a hyphen is what you want).  
+* Now, get rid of the initial "10" in the exponent variable.
+    - Make sure that " 10-10" (row 12) gets turned into "-10", and not "-".
+* Also, replace the `NA` with "0"; I used `case_when()` for this, but I had to be sure to put the zero inside quotes, rather than write it as a number.
+
+
+```{r prob 2e}  
+genes <- genes %>% 
+  mutate(exponent = str_replace(exponent, "−", "-") %>% 
+           str_extract("-[0-9]*"), 
+         exponent = case_when(is.na(exponent) ~ "0", TRUE ~ exponent))
+```
+
+* The result of the code chunk below should start like this:
+```
+   coefficient exponent
+   <chr>       <chr>   
+ 1 "1.0 "      -16     
+ 2 "4.4 "      -16     
+ 3 "9.9 "      -9      
+ 4 "0.016"     0       
+ 5 "1.0 "      -16     
+```
+
+```{r prob 2e check}
+genes %>% 
+  select(coefficient, exponent)
+```
+
+* Next, convert the `coefficient` and `exponent` variables to numeric.
+* Now please define a new variable `p_value`, as `coefficient * 10^exponent`.
+* Finally, drop the variables coefficient and exponent.
+
+```{r prob 2f}
+genes <- genes %>% 
+  mutate(coefficient = as.numeric(coefficient), exponent = as.numeric(exponent), p_value = coefficient * 10^exponent) %>% 
+  select(-c(coefficient, exponent))
+```
+
+* You should end up with something very much like
+
+```{r}
+glimpse(genes)
+```
+
+```
+Rows: 20
+Columns: 6
+$ `Locus (height SNP)`                  <chr> "rs10748128", "rs2166898", "rs526896-rs9327705", "rs16860216", "rs1199734", "r…
+$ Gene                                  <chr> "FRS2", "GLI2", "TBX4", "SOX8", "LATS2", "PDS5B", "SP3", "AXIN2", "LTBP1", "WN…
+$ `New locus`                           <chr> "No", "Yes", "No", "No", "Yes", "No", "Yes", "Yes", "No", "Yes", "Yes", "No", …
+$ `Lines of supporting evidence`        <int> 7, 7, 7, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 5, 5, 5, 5
+$ `Top-ranking reconstituted gene sets` <chr> "PI3K cascade (REACTOME, P = 6.2 × 10−13); Chronic myeloid leukemia (KEGG, P =…
+$ p_value                               <dbl> 1.0e-16, 4.4e-16, 9.9e-09, 1.6e-02, 1.0e-16, 1.0e-16, 1.0e-16, 2.2e-16, 1.3e-1…
+```
+
+* No graphical payoff for this problem. Sometimes the work must be its own reward.
+
+## Finishing up
+
+* When you are done, be sure that you can knit your file to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved the final version of your file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment
+Avi Kodali

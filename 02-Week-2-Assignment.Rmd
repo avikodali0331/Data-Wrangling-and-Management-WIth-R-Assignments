@@ -1,0 +1,94 @@
+---
+title: "Week 2 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted must be your own, however, and not simply copied.
+
+
+## Set up
+First load the tidyverse packages and load some data. You can run the entire chunk by clicking on the green triangle below.
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidylog)
+
+yellow_cab <- read_csv("yellow_tripdata_2021_01_26.csv")
+restaurants <- read_csv("restaurant_inspections_2021.csv.gz",  guess_max = 10000)
+```
+
+
+## Problem 1
+
+The data for this problem is in the tibble `yellow_cab`, which consists of all yellow taxi cab trips in New York City on January 26, 2021. 
+
+```{r}
+yellow_cab %>%
+  glimpse()
+```
+
+```{r}
+head(yellow_cab)
+```
+* Please combine the following steps into a series of pipes:
+  + Calculate a new variable `fare` as `total_amount` - `tip_amount`
+  + Calculate a new variable `tip_percentage` as `tip_amount`/`fare` * 100
+  + Drop any row for which the fare is less than $10
+  + Drop all columns except `fare`, `tip_amount`, and `tip_percentage`
+  + Sort by *decreasing* amounts of `tip_percentage`
+
+
+```{r problem 1}
+yellow_cab %>%
+  mutate(fare = total_amount - tip_amount, tip_percentage = tip_amount / fare) %>%
+  filter(fare >= 10) %>%
+  select(fare, tip_amount, tip_percentage) %>%
+  arrange(desc(tip_percentage))
+```
+
+
+## Problem 2
+
+The data for this problem is in the tibble `restaurants`, which contains data on New York City restaurant inspections in 2021. Each row in the data corresponds to one violation at one restaurant.
+
+```{r}
+restaurants %>%
+  glimpse()
+```
+
+```{r}
+head(restaurants)
+```
+
+* Please combine the following steps into a series of pipes:
+  + Include only observations for which `BORO` is Manhattan
+  + Group the observations by `CAMIS`, which is a unique identifier of each establishment, and `DBA`, which is the name of the restaurant
+  + Summarize the data by creating a new variable `total_violations` equal to the total number of violations at each restaurant
+  + Sort the data by the decreasing number of violations
+  + Show the 10 restaurants with the most violations by using `head()
+  
+```{r problem 2}
+restaurants %>%
+  filter(BORO == "Manhattan") %>%
+  group_by(CAMIS, DBA) %>%
+  summarize(total_violations = n()) %>%
+  arrange(desc(total_violations)) %>%
+  head(10)
+```
+  
+  
+
+
+
+## Finishing up
+
+When you are done, be sure to select "Run All" from the "Run" menu (top right of the source code pane) to confirm that your code runs start to finish without errors. Besides modifying the two code chunks, make sure you have replaced YOUR NAME HERE and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+Finally, be sure that you have saved you file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Then, in the Files pane, click the checkbox by the file named `02-Week-2-Assignment.Rmd` and choose "More" from the pane's menu, followed by "Export", to download the file to your own computer. From there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this quiz.
+Avi Kodali
