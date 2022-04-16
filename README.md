@@ -12,3 +12,5 @@ This is a repository that contains assignments that I completed for my Data Wran
 - Week 8: This assignment involves using the case_when() function, using map functions, tidying data, and a little more advanced plotting using ggplot.
 - Week 9: This assignment involves obtaining data from web scraping, and working with that data to make it usable. 
 - Week 10: This assignment is more practice with web scraping, as well as using API's to obtain data. 
+- Week 11(Part 1): This assignment involved practice with obtaining data through web scraping, and then cleaning that data to make a final box plot of the top 10 streamed songs on Spotify.
+- Week 11(Part 2): This assignment is more practice with web scraping, tidying data, and plotting using ggplot, but also using R to communicate with SQL databases. 
