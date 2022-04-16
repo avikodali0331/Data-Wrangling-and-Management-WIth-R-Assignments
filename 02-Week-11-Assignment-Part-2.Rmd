@@ -1,0 +1,166 @@
+---
+title: "Week 11 Main Assignment Part 2"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+You may use whatever resources you like for the following assignment, including working with others. The work submitted should be your own, however, and not simply copied. 
+
+## Set up
+First load some required packages and data frames. You can run the entire chunk by clicking on the green triangle below.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(here)
+library(glue)
+library(ggrepel)
+library(ggbeeswarm)
+```
+
+
+### Problem 2 (Problem 1 is the Spotify-related assignment).
+
+* The goal for this part of the assignment is to make a version of the plot at https://datagraver.com/case/kyoto-cherry-blossom-full-flower-dates
+* First, read the data from https://datagraver.com/downloads/kyoto_dates_cherryblossom2022.csv into a data frame called `blossoms`.
+* Next, drop any row for which `Day` is `NA` and also drop any year before 1000 (just to keep things simpler for ourselves); keep the new data frame named `blossoms`.
+* Next, please add a new variable named `bloom_date`---constructed using `paste`, `glue`, or `str_c`, along with a function from the `lubridate` package---that contains the date of the first day of full bloom.
+* Finally, add another new variable, `Day of the year`, by applying the function `yday()` from the `lubridate` to `bloom_date`.
+
+
+```{r Problem 2a}
+blossoms <- read.csv("https://datagraver.com/downloads/kyoto_dates_cherryblossom2022.csv") %>% 
+  filter(!is.na(Day), Year >= 1000) %>% 
+  mutate(bloom_date = paste(Year, Month, Day, sep = "-") %>% ymd(),
+         `Day of the year` = yday(bloom_date))
+```
+
+* The code chunk below should give the following result (note the values in the row describing the data types):
+```
+# A tibble: 2 × 5
+   Year Month   Day bloom_date `Day of the year`
+  <dbl> <dbl> <dbl> <date>                 <dbl>
+1  1000     4    15 1000-04-15               105
+2  1004     4    26 1004-04-26               117
+```
+
+```{r Problem 2a check}
+blossoms %>%
+  slice(1:2)
+```
+
+* Now please make a plot of these points, along with a smooth. 
+    - Use `span = .10` in the smoothing function so as to better see the fluctuations.
+* Make the smooth red and all the points pink.
+* Name the resulting plot as `base_plot`, and then display it by typing `base_plot` on a separate line.
+
+```{r Problem 2b}
+base_plot <- blossoms %>% 
+  ggplot(aes(x = Year, y = `Day of the year`)) + 
+  geom_point(color = "pink") +
+  geom_smooth(span = .10, color = "red", se = FALSE)
+
+base_plot
+```
+
+* Now, please create a new data frame called `extremes` from `blossoms`, by filtering to include just those observations where `Day of the year` >= 128 or <= 86. It should have three rows.
+* Starting with `base_plot`, plot the three observations from `extremes` with "deeppink" for the color of the points.
+    - You will only need to add a `geom_point()` expression (with appropriate arguments).
+
+```{r Problem 2c}
+extremes <- blossoms %>% 
+  filter(`Day of the year` >= 128 | `Day of the year` <= 86)
+
+base_plot +
+  geom_point(data = extremes, color  = "deeppink")
+```
+
+* Recycling your code in Problem 2c, add a label to the three points using `geom_text_repel()`.
+* Please also add a title.
+
+```{r Problem 2d}
+base_plot +
+  geom_point(data = extremes, color  = "deeppink") + 
+  geom_text_repel(aes(label = paste(Month, Day, Year, sep = "/")), data = extremes) +
+  ggtitle("Full-flowering day Cherry Blossom for Kyoto, Japan")
+```
+* Incidentally, Branch Brook Park in Newark has the largest collection of cherry blossom trees in the US,  https://branchbrookpark.org/cherryblossoms.html.
+
+
+### Problem 3
+
+* This problem involves using data stored in a database. 
+* For this problem, use R code, not SQL code (that is, let R communicate using SQL behind the scenes).
+* Begin by runnin the code chunk below, which establishes the connection to the database.
+
+```{r}
+con <- DBI::dbConnect(RSQLite::SQLite(), dbname = here("data", "w12-assignment.sqlite"))
+```
+
+* The database contains a table called `City` and a table called `Country`.
+* First, create objects in R that refer to the tables `City` and `Country`.
+* Next, please join the City and Country tables on the code variable (`CountryCode` in City, `Code` in Country), to create  `city_revised`, with variables only for the names of all of the cities, their countries, their continents, their regions, and their populations (not the population of the country). 
+  - Do not stick with names like `Name.x` and `Name.y`; instead rename the variables to meaningful names.
+* You do not have to collect the data frame into R, but in the same code chunk please print the first five rows of `city_revised` by order of decreasing population.
+* Note: Variable names like `Name.x` and `Name.y` come about because `Name` is common to both data frames in the join, but they are not part of the `by` argument. The join leaves them both in but distinguishes them with the suffix.
+
+
+```{r prob 3a}
+city_sqlite <- tbl(con, "City")
+country_sqlite <- tbl(con, "Country")
+
+city_revised <- city_sqlite %>% 
+  left_join(country_sqlite, by = c("CountryCode" = "Code")) %>% 
+  rename(City = Name.x, 
+         Country = Name.y, 
+         `City Population` = Population.x, 
+         `Continent Population` = Population.y) %>% 
+  select(City, Country, Continent, Region, `City Population`)
+
+city_revised %>% 
+  arrange(desc(`City Population`)) %>% 
+  head(5)
+```
+* Your code chunk above should give a result something like
+```
+# Source:     lazy query [?? x 5]
+# Database:   sqlite 3.38.2 [/Users/buyske/Dropbox/Teaching/DWMR/Projects/Week 11/data/w12-assignment.sqlite]
+# Ordered by: desc(`City Population`)
+  City            Country     Continent Region                    `City Population`
+  <chr>           <chr>       <chr>     <chr>                                 <dbl>
+1 Mumbai (Bombay) India       Asia      Southern and Central Asia          10500000
+2 Seoul           South Korea Asia      Eastern Asia                        9981619
+3 Shanghai        China       Asia      Eastern Asia                        9696300
+4 Jakarta         Indonesia   Asia      Southeast Asia                      9604900
+5 Karachi         Pakistan    Asia      Southern and Central Asia           9269265
+```
+
+* Now restricting to just continent of Africa, please make a box plot of the city populations by region.
+* Please use a log10 scale for the y axis (look back to Five Verbs Part 2 or Week 8 Class 1 if you don't remember how). 
+* Please also use a different color for the boxplot of each region, but suppress the legend.
+* Finally, please include a layer in your plot for points by using `geom_beeswarm()`.
+* You can ignore an error message starting `ORDER BY is ignored in subqueries without LIMIT`, or avoid it by using `collect()`.
+
+```{r prob 3b}
+city_revised %>% 
+  filter(Continent == "Africa") %>% 
+  ggplot(aes(x = Region, y = `City Population`, color = Region)) +
+  geom_boxplot() +
+  scale_y_log10() +
+  theme_bw() +
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5)) +
+  geom_beeswarm() +
+  ggtitle("City Population Distribution by Regions in Africa")
+```
+
+
+## Finishing up
+
+* When you are done, be sure to select "Run All" from the "Run" menu (top right of the source code pane) to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved you file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment.
+Avi Kodali
