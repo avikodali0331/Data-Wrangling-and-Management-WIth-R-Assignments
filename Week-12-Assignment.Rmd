@@ -1,0 +1,217 @@
+---
+title: "Week 12 Main Assignment"
+author: "Avi Kodali"
+output: html_notebook
+---
+
+## Instructions
+
+This assignment is open everything, including notes, textbook, and whatever you might find on the internet. However, **no interaction with other people is allowed.** Do not post public questions to Piazza that are specifically about this assignment before April 25, alth ough general questions ("which join function do I use to keep only observations in both datasets?") would be okay. If you have trouble or questions, please email buyske@stat.rutgers.edu.
+
+
+
+### Set up
+First load the packages tidyverse, readxl, and here.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(here)
+```
+
+### Problem 1
+
+
+* We will work with a database version of `nycflights13`.
+* First, set up the connection with the code chunk below.
+
+```{r}
+con <- DBI::dbConnect(RSQLite::SQLite(), dbname = here("data", "nycflights13.sqlite"))
+```
+
+* Next, use **SQL, not R** in the code chunk below to create a table from the `flights` table that adds the `name` variable from the `airlines` table.
+* It's worth knowing that both tables have a column called `carrier`.
+* Pay attention to good SQL coding style.
+
+
+```{sql problem 1a, connection= con, output.var="prob_1a"}
+SELECT * 
+  FROM flights 
+LEFT JOIN airlines
+  ON flights.carrier = airlines.carrier;
+```
+
+* If your code in the chunk above is correct, you should get a result of `[1] 336776     21` in the code chunk below
+```{r problem 1a check}
+dim(prob_1a)
+```
+
+* Please write SQL code in the chunk below to answer the question of how many flights on carrier DL there were in July (that is, in month 7) originating from each of the three NYC area airports.
+* Please use `n_flights` as the name of the variable indicating the number of flights.
+
+```{sql problem 1b, connection= con, output.var="prob_1b"}
+SELECT origin, COUNT(flight) AS n_flight
+  FROM flights
+  WHERE carrier = "DL" AND month = 7
+GROUP BY origin;
+```
+
+* If your code in the chunk above is correct, you should have 340 flights from EWR in the first row below
+```{r problem 1b check}
+prob_1b
+```
+
+* Next, write SQL code that that finds the number of flights per plane (that is, per `tailnum`) originating from LaGuardia (LGA) and restricts the resulting table to planes with at least 250 flights.
+
+```{sql problem 1c, connection= con, output.var="prob_1c"}
+SELECT tailnum, COUNT(flight) AS n_flights
+  FROM flights
+  WHERE origin = "LGA"
+GROUP BY tailnum 
+  HAVING n_flights >= 250;
+```
+
+* If your code is correct, the chunk below should start like
+```
+   tailnum n_flights
+1     <NA>       997
+2   N0EGMQ       293
+3   N523MQ       252
+```
+
+```{r problem 1c check}
+prob_1c
+```
+
+* Finally, reuse your code from 1c as a subquery to solve the following:
+  - find all planes (as indicated by the tailnum) with at least 250 flights, by using an inner join that starts with the `planes` table to show full information on the planes;  include the number of flights in your result. 
+* Please order the result in decreasing order of `n_flights`, the number of flights.
+* Hints: 
+  - Start with the `planes` table but use a join with the subquery.
+  - Remember the entire subquery goes inside one set parentheses.
+  - Remember to use the AS keyword to assign temporary table names.
+
+```{sql problem 1d, connection= con, output.var="prob_1d"}
+SELECT *
+  FROM planes
+INNER JOIN ( SELECT tailnum, COUNT(flight) AS n_flights
+              FROM flights
+              WHERE origin = "LGA"
+            GROUP BY tailnum 
+              HAVING n_flights >= 250) AS LGA_flights
+  ON planes.tailnum = LGA_flights.tailnum
+  WHERE LGA_flights.tailnum IS NOT NULL
+ORDER BY n_flights DESC;
+```
+
+* You should end up with eight rows.
+```{r problem 1d check}
+prob_1d
+```
+
+### Problem 2
+
+* For this problem, we will look at health spending and infant mortality among the wealthiest countries.
+* I have downloaded a number of Excel files from http://www.gapminder.org and saved them in the data folder, with names matching the measure.
+* These files are all in the wide format, with the column names equal to the year.
+* In the code chunk below, please read `health_spending.xlsx`, `population.xlsx`, `gdp_per_cap.xlsx` and `infant_mortality.xlsx` into data frames with names `health_spending`, `population`, and so on.
+    - Include the argument `na = c("", "-", ".")` so that blanks, hyphens, and periods are read as `NA`'s
+* I've included code to change the name of the first variable to `country`.
+
+```{r prob 2a}
+health_spending <- read_excel(path = "data/health_spending.xlsx", na = c("", "-", "."))
+population <- read_excel(path = "data/population.xlsx", na = c("", "-", "."))
+gdp_per_cap <- read_excel(path = "data/gdp_per_cap.xlsx", na = c("", "-", "."))
+infant_mortality <- read_excel(path = "data/infant_mortality.xlsx", na = c("", "-", "."))
+
+names(health_spending)[1] <- names(population)[1] <- names(gdp_per_cap)[1] <- names(infant_mortality)[1] <- "country"
+```
+
+* Please create a data frame that you call `large_country_gdp_per_cap` by starting with the `gdp_per_cap` data frame and using a `semi_join` to restrict to countries that had a population of at least 1,000,000 in the year 2000.
+* Hint:
+  - `population %>% filter(`2000.0` >= 1000000)` gives a data frame with only countries with a population of at least 1,000,000.
+* Please create a data frame called `rich_12` that consists of the 12 countries in `large_country_gdp_per_cap` with the largest gdp per capita in 2000.
+
+```{r prob 2b}
+large_country_gdp_per_cap <- gdp_per_cap %>% 
+  semi_join(population %>% 
+              filter(`2000.0` >= 1000000), 
+            by = "country")
+
+rich_12 <- large_country_gdp_per_cap %>% 
+  arrange(desc(`2000`)) %>% 
+  head(12)
+```
+
+* You should get the following vector from the code chunk below.
+```
+ [1] "Austria"              "Denmark"              "Hong Kong, China"     "Ireland"             
+ [5] "Japan"                "Netherlands"          "Norway"               "Sweden"              
+ [9] "Switzerland"          "United Arab Emirates" "United Kingdom"       "United States"   
+```
+
+```{r prob 2b check}
+rich_12 %>% 
+  pull(country) %>% 
+  sort()
+```
+
+* Now restrict the `health_spending` and `infant_mortality` datasets to just those countries in `rich_12` (use `semi_join()`) and then convert them to long format.
+    - Use `health_spending`, and `infant_mortality` as the variable names for the values from the wide format. 
+    - Please call the two resulting data frames `health_spending_long` and `infant_mortality_long`.
+* Before the next step, convert the `year` variable in each data frame to type numeric.
+* Please perform a full join of the two resulting long data frames, using both country and year as the keys. Call the resulting data frame `combined_long`.
+* Finally, drop any rows for which either variable is missing. I've provided that code.
+
+
+```{r prob 1c}
+health_spending_long <- health_spending %>% 
+  semi_join(rich_12, by = "country") %>% 
+  pivot_longer(cols = 2:17 ,names_to = "year", values_to = "health_spending") %>% 
+  mutate(year = as.numeric(year))
+
+infant_mortality_long <- infant_mortality %>% 
+  semi_join(rich_12, by = "country") %>% 
+  pivot_longer(cols = 2: 217, names_to = "year", values_to = "infant_mortality") %>% 
+  mutate(year = as.numeric(year))
+
+combined_long <- health_spending_long %>% 
+  full_join(infant_mortality_long, by = c("country", "year"))
+
+combined_long <- combined_long %>%
+  filter(!is.na(health_spending), !is.na(infant_mortality))
+```
+
+* The code chunk below should show that the dimension of `combined_long` is 176 by 4.
+
+```{r prob 2c check}
+dim(combined_long)
+```
+
+* Finally, restricting to the year 1985 and after, please plot `health_spending` on the x-axis and `infant_mortality` on the y-axis, with different colors for different countries.
+* Please use both points and lines (not a smooth!) in your plot.
+* You can pretty up the plot if you like, but it not necessary for this assignment.
+
+```{r prob 2c}
+combined_long %>% 
+  filter(year >= 1985) %>% 
+  ggplot(aes(x = health_spending, y = infant_mortality, color = country)) + 
+  geom_point() +
+  geom_line() +
+  ggtitle("Infant Mortality vs Health Spending") +
+  xlab("Health spending") +
+  ylab("Infant mortality") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
+## Finishing up
+
+* When you are done, be sure that you can knit your file to confirm that your code runs start to finish without errors. Besides modifying the code chunks, make sure you have replaced YOUR CODE HERE, YOUR NAME HERE, and YOUR ANSWER HERE appropriately. Be sure to sign the honor pledge below.
+
+* Finally, be sure that you have saved the final version of your file in RStudio Cloud (under the File menu of RStudio Cloud, not the File menu of your browser). Download the file to your own computer, and from there, upload the file to Canvas. There is no need to rename it---Canvas will add your name to it when I download it.
+
+On my honor, I have neither received nor given any unauthorized assistance on this assignment.
+Avi Kodali
