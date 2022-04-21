@@ -14,3 +14,4 @@ This is a repository that contains assignments that I completed for my Data Wran
 - Week 10: This assignment is more practice with web scraping, as well as using API's to obtain data. 
 - Week 11(Part 1): This assignment involved practice with obtaining data through web scraping, and then cleaning that data to make a final box plot of the top 10 streamed songs on Spotify.
 - Week 11(Part 2): This assignment is more practice with web scraping, tidying data, and plotting using ggplot, but also using R to communicate with SQL databases. 
+- Week 12: This assignment is focussed on using SQL withing R to communicate with databases, as well as further practice on cleaning messy data. 
