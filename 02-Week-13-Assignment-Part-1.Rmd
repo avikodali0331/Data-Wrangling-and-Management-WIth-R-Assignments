@@ -1,0 +1,38 @@
+---
+title: "Week 13 Assignment Part 1"
+author: "Avi Kodali"
+date: '2022-04-25'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(palmerpenguins)
+```
+
+```{r}
+ugly_plot <- penguins %>% 
+  filter(!is.na(sex)) %>% 
+  ggplot(aes(x = body_mass_g, y = flipper_length_mm, color = species, shape = sex)) +
+  geom_point(size = 10) +
+  geom_line() +
+  geom_smooth() + 
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill = "magenta"),
+    axis.text = element_text(face = c("bold","italic"), size = 5),
+    axis.text.x.bottom = element_text(angle = 180),
+    axis.text.y.left = element_text(angle = 180),
+    legend.background = element_rect(fill = "green"), 
+    legend.key = element_rect(fill = "red")
+  ) +
+  labs(title = " ",
+       x = " ",
+       y = " ",
+       col = " ")
+
+ugly_plot
+
+ggsave("AviKodali.png", plot = ugly_plot)
+```
